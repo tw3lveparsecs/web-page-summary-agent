@@ -7,11 +7,13 @@ the Azure Updates portal before extracting content with BeautifulSoup.
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
 from playwright.sync_api import sync_playwright, Browser, Playwright
+from playwright.async_api import async_playwright, Browser as AsyncBrowser, Playwright as AsyncPlaywright
 
 # Phrases that indicate the page returned a bot-detection / challenge
 # page rather than the real content.
@@ -146,6 +148,93 @@ class BrowserExtractor:
 
             html = page.content()
             context.close()
+
+            title, content = _extract_content(html)
+
+            if not content.strip():
+                return ExtractedPage(
+                    url=url, title=title, content="", success=False,
+                    error="No meaningful content could be extracted from the page.",
+                )
+            return ExtractedPage(url=url, title=title, content=content, success=True)
+
+        except Exception as e:
+            return ExtractedPage(
+                url=url, title="", content="", success=False,
+                error=f"Browser extraction error: {e}",
+            )
+
+
+class AsyncBrowserExtractor:
+    """Async version of BrowserExtractor for use inside an asyncio loop (e.g. FastAPI/Uvicorn)."""
+
+    def __init__(self) -> None:
+        self._pw: AsyncPlaywright | None = None
+        self._browser: AsyncBrowser | None = None
+
+    async def __aenter__(self) -> "AsyncBrowserExtractor":
+        self._pw = await async_playwright().start()
+        self._browser = await self._pw.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        return self
+
+    async def __aexit__(self, *exc) -> None:
+        if self._browser:
+            await self._browser.close()
+        if self._pw:
+            await self._pw.stop()
+
+    async def extract(self, url: str, wait_seconds: int = 10, max_retries: int = 3) -> ExtractedPage:
+        if not self._browser:
+            raise RuntimeError("AsyncBrowserExtractor must be used as an async context manager.")
+
+        for attempt in range(1, max_retries + 1):
+            result = await self._try_extract(url, wait_seconds)
+
+            if not result.success:
+                return result
+
+            if not _is_bot_detection(result.title, result.content):
+                return result
+
+            if attempt < max_retries:
+                await asyncio.sleep(2 * attempt)
+
+        return ExtractedPage(
+            url=url, title="", content="", success=False,
+            error=f"Page returned a bot-detection challenge after {max_retries} attempts. Try again later.",
+        )
+
+    async def _try_extract(self, url: str, wait_seconds: int) -> ExtractedPage:
+        try:
+            context = await self._browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                locale="en-US",
+                viewport={"width": 1280, "height": 720},
+            )
+            await context.add_init_script(
+                'Object.defineProperty(navigator, "webdriver", {get: () => undefined})'
+            )
+            page = await context.new_page()
+            await page.goto(url, wait_until="networkidle", timeout=30_000)
+
+            try:
+                await page.wait_for_selector(
+                    "h2, h3, article, main p, [role='main']",
+                    timeout=wait_seconds * 1000,
+                )
+            except Exception:
+                pass
+
+            await page.wait_for_timeout(2000)
+            html = await page.content()
+            await context.close()
 
             title, content = _extract_content(html)
 

@@ -15,23 +15,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, HttpUrl
 
-from extractor import BrowserExtractor, ExtractedPage
+from extractor import AsyncBrowserExtractor, ExtractedPage
 from summariser import get_client, summarise_content, load_system_prompt
 
 # --------------------------------------------------------------------------- #
 #  Lifespan: keep one browser instance alive across requests                   #
 # --------------------------------------------------------------------------- #
 
-_browser: BrowserExtractor | None = None
+_browser: AsyncBrowserExtractor | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _browser
-    _browser = BrowserExtractor()
-    _browser.__enter__()
+    _browser = AsyncBrowserExtractor()
+    await _browser.__aenter__()
     yield
-    _browser.__exit__(None, None, None)
+    await _browser.__aexit__(None, None, None)
     _browser = None
 
 
@@ -108,7 +108,7 @@ async def summarise(request: SummariseRequest):
         payload = json.dumps(data) if isinstance(data, dict) else data
         return f"event: {event}\ndata: {payload}\n\n"
 
-    def generate():
+    async def generate():
         system_prompt = request.system_prompt or load_system_prompt()
         auth = request.auth
         total = len(request.urls)
@@ -139,7 +139,7 @@ async def summarise(request: SummariseRequest):
 
             # --- Extract ---
             yield _sse("status", {"message": f"[{i}/{total}] Extracting content from {url}"})
-            page: ExtractedPage = _browser.extract(url)
+            page: ExtractedPage = await _browser.extract(url)
 
             if not page.success:
                 failed += 1

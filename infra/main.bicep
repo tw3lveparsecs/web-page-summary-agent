@@ -48,6 +48,7 @@ var foundryEndpoint = foundryAccount.?outputs.?endpoint ?? existingFoundryEndpoi
 var backendAppSettings = {
   ALLOWED_ORIGINS: allowedOrigins
   SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
+  WEBSITES_CONTAINER_START_TIME_LIMIT: '600'
 }
 var frontendAppSettings = {
   SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
@@ -107,7 +108,7 @@ module backendApp 'br/public:avm/res/web/site:0.22.0' = {
     }
     siteConfig: {
       linuxFxVersion: 'PYTHON|${pythonVersion}'
-      appCommandLine: 'startup.sh'
+      appCommandLine: 'python -m playwright install --with-deps chromium && gunicorn api:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 300'
       alwaysOn: true
     }
     configs: [
