@@ -95,6 +95,24 @@ module appServicePlan 'br/public:avm/res/web/serverfarm:0.7.0' = {
   }
 }
 
+// VNet for App Service regional integration (service endpoint → Foundry firewall)
+module vnet 'br/public:avm/res/network/virtual-network:0.7.0' = {
+  name: 'vnet'
+  params: {
+    name: '${baseName}-vnet'
+    location: location
+    addressPrefixes: ['10.0.0.0/16']
+    subnets: [
+      {
+        name: 'integration'
+        addressPrefix: '10.0.1.0/24'
+        delegation: 'Microsoft.Web/serverFarms'
+        serviceEndpoints: ['Microsoft.CognitiveServices']
+      }
+    ]
+  }
+}
+
 // Backend Web App (Python agent API)
 module backendApp 'br/public:avm/res/web/site:0.22.0' = {
   name: 'backendApp'
@@ -103,6 +121,7 @@ module backendApp 'br/public:avm/res/web/site:0.22.0' = {
     location: location
     kind: 'app,linux'
     serverFarmResourceId: appServicePlan.outputs.resourceId
+    virtualNetworkSubnetResourceId: vnet.outputs.subnetResourceIds[0]
     managedIdentities: {
       systemAssigned: true
     }
@@ -176,3 +195,4 @@ output frontendUrl string = 'https://${baseName}-web.azurewebsites.net'
 output backendPrincipalId string = backendApp.outputs.?systemAssignedMIPrincipalId!
 output foundryEndpointUrl string = foundryEndpoint
 output foundryResourceIdOutput string = foundryResourceId
+output integrationSubnetId string = vnet.outputs.subnetResourceIds[0]

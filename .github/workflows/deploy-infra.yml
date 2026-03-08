@@ -15,6 +15,8 @@ on:
 
 env:
   AZURE_RG: "web-summariser-rg"    # TODO: set your resource group name
+  FOUNDRY_RG: "foundry-rg"         # Resource group of the existing Foundry account
+  FOUNDRY_ACCOUNT: "lab-foundry-fdry"  # Name of the existing Foundry account
 
 permissions:
   id-token: write
@@ -35,6 +37,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy Bicep template
+        id: deploy
         uses: azure/arm-deploy@v2
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -42,3 +45,10 @@ jobs:
           template: infra/main.bicep
           parameters: infra/main.bicepparam
           failOnStdErr: false
+
+      - name: Allow App Service subnet on Foundry firewall
+        run: |
+          az cognitiveservices account network-rule add \
+            --name "${{ env.FOUNDRY_ACCOUNT }}" \
+            --resource-group "${{ env.FOUNDRY_RG }}" \
+            --subnet "${{ steps.deploy.outputs.integrationSubnetId }}"
