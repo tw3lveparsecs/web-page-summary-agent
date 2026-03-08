@@ -89,7 +89,7 @@ function App() {
             method: authMethod === 'entra' ? 'entra' : 'apikey',
             entra_type: authMethod === 'entra' ? entraAuthType : undefined,
             api_key: authMethod === 'apikey' ? apiKey : undefined,
-            client_id: authMethod === 'entra' ? clientId : undefined,
+            client_id: authMethod === 'entra' && entraAuthType === 'service-principal' ? clientId : undefined,
             tenant_id: authMethod === 'entra' && entraAuthType === 'service-principal' ? tenantId : undefined,
             client_secret: authMethod === 'entra' && entraAuthType === 'service-principal' ? clientSecret : undefined,
           },

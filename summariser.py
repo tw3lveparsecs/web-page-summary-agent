@@ -81,11 +81,8 @@ def get_client(
         )
 
     if auth_method == "entra":
-        kwargs: dict = {}
-        if client_id:
-            kwargs["managed_identity_client_id"] = client_id
         if tenant_id and client_id and client_secret:
-            # Service principal overrides managed identity
+            # Service principal
             from azure.identity import ClientSecretCredential
             credential = ClientSecretCredential(
                 tenant_id=tenant_id,
@@ -93,6 +90,10 @@ def get_client(
                 client_secret=client_secret,
             )
         else:
+            kwargs: dict = {}
+            if client_id and not client_secret:
+                # User-assigned managed identity — pass the client ID
+                kwargs["managed_identity_client_id"] = client_id
             credential = DefaultAzureCredential(**kwargs)
         token_provider = get_bearer_token_provider(
             credential, "https://cognitiveservices.azure.com/.default"
