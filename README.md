@@ -35,10 +35,13 @@ A Python CLI tool that extracts content from any web page, including JavaScript 
 
    | Variable | Description |
    |---|---|
+   | `FOUNDRY_AUTH` | Authentication method: `key` (default) or `entra` |
    | `FOUNDRY_ENDPOINT` | Your Microsoft Foundry resource endpoint |
-   | `FOUNDRY_API_KEY` | Your API key |
+   | `FOUNDRY_API_KEY` | Your API key (required when `FOUNDRY_AUTH=key`) |
    | `FOUNDRY_DEPLOYMENT` | Model deployment name (default: `gpt-4o`) |
    | `FOUNDRY_API_VERSION` | API version (default: `2024-12-01-preview`) |
+
+   **Entra ID authentication:** Set `FOUNDRY_AUTH=entra` to authenticate using your Azure identity instead of an API key. This uses `DefaultAzureCredential`, which automatically picks up credentials from the Azure CLI, environment variables, managed identity, and other sources. Ensure your identity has the *Cognitive Services OpenAI User* role on the Foundry resource.
 
 ## Usage
 

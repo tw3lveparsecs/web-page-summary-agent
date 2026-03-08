@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from dataclasses import dataclass
 from openai import AzureOpenAI
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -50,16 +51,40 @@ def load_system_prompt(prompt_path: str | Path | None = None) -> str:
 
 
 def get_client() -> AzureOpenAI:
-    """Create and return a Microsoft Foundry client from environment variables."""
-    endpoint = os.getenv("FOUNDRY_ENDPOINT")
-    api_key = os.getenv("FOUNDRY_API_KEY")
-    api_version = os.getenv("FOUNDRY_API_VERSION", "2024-12-01-preview")
+    """
+    Create and return a Microsoft Foundry client from environment variables.
 
-    if not endpoint or not api_key:
+    Authentication is determined by the ``FOUNDRY_AUTH`` variable:
+      - ``key``   (default) uses ``FOUNDRY_API_KEY``
+      - ``entra`` uses Entra ID via ``DefaultAzureCredential``
+    """
+    endpoint = os.getenv("FOUNDRY_ENDPOINT")
+    api_version = os.getenv("FOUNDRY_API_VERSION", "2024-12-01-preview")
+    auth_method = os.getenv("FOUNDRY_AUTH", "key").lower().strip()
+
+    if not endpoint:
         raise EnvironmentError(
-            "Missing required environment variables: "
-            "FOUNDRY_ENDPOINT and FOUNDRY_API_KEY. "
+            "Missing required environment variable: FOUNDRY_ENDPOINT. "
             "Copy .env.example to .env and fill in your values."
+        )
+
+    if auth_method == "entra":
+        credential = DefaultAzureCredential()
+        token_provider = get_bearer_token_provider(
+            credential, "https://cognitiveservices.azure.com/.default"
+        )
+        return AzureOpenAI(
+            azure_endpoint=endpoint,
+            azure_ad_token_provider=token_provider,
+            api_version=api_version,
+        )
+
+    # Default: API key authentication
+    api_key = os.getenv("FOUNDRY_API_KEY")
+    if not api_key:
+        raise EnvironmentError(
+            "Missing required environment variable: FOUNDRY_API_KEY. "
+            "Set FOUNDRY_API_KEY or switch to Entra ID by setting FOUNDRY_AUTH=entra."
         )
 
     return AzureOpenAI(
