@@ -164,12 +164,16 @@ The project includes Bicep infrastructure and GitHub Actions workflows to deploy
      --condition-version "2.0"
    ```
 
-3. **Cognitive Services Contributor** on the Foundry account for the service principal (required for the VNet service endpoint network rule):
+3. **Cognitive Services Contributor** on the Foundry account and **Network Contributor** on the integration subnet for the service principal (required for the VNet service endpoint network rule):
 
    ```bash
    az role assignment create --assignee <app-id> \
      --role "Cognitive Services Contributor" \
      --scope /subscriptions/<sub>/resourceGroups/<foundry-rg>/providers/Microsoft.CognitiveServices/accounts/<foundry-account>
+
+   az role assignment create --assignee <app-id> \
+     --role "Network Contributor" \
+     --scope /subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<baseName>-vnet/subnets/integration
    ```
 
 4. **GitHub repository secrets** and **workflow env vars:**
