@@ -44,8 +44,8 @@ param foundryApiVersion string = '2024-12-01-preview'
 param allowedOrigins string = '*'
 
 // Resolved values: use new Foundry outputs when deploying, otherwise use existing params
-var foundryResourceId = foundryAccount.outputs.?resourceId ?? existingFoundryResourceId
-var foundryEndpoint = foundryAccount.outputs.?endpoint ?? existingFoundryEndpoint
+var foundryResourceId = foundryAccount.?outputs.?resourceId ?? existingFoundryResourceId
+var foundryEndpoint = foundryAccount.?outputs.?endpoint ?? existingFoundryEndpoint
 
 // App settings for the backend and frontend web apps
 var backendAppSettings = {
@@ -153,7 +153,7 @@ module frontendApp 'br/public:avm/res/web/site:0.22.0' = {
 module roleAssignment 'br/public:avm/ptn/authorization/resource-role-assignment:0.1.2' = {
   name: 'backendFoundryRole'
   params: {
-    principalId: backendApp.outputs.systemAssignedMIPrincipalId
+    principalId: backendApp.outputs.?systemAssignedMIPrincipalId!
     roleDefinitionId: cognitiveServicesOpenAIUserRoleId
     resourceId: foundryResourceId
     principalType: 'ServicePrincipal'
@@ -163,6 +163,6 @@ module roleAssignment 'br/public:avm/ptn/authorization/resource-role-assignment:
 // Outputs
 output backendUrl string = 'https://${baseName}-api.azurewebsites.net'
 output frontendUrl string = 'https://${baseName}-web.azurewebsites.net'
-output backendPrincipalId string = backendApp.outputs.systemAssignedMIPrincipalId
+output backendPrincipalId string = backendApp.outputs.?systemAssignedMIPrincipalId!
 output foundryEndpointUrl string = foundryEndpoint
 output foundryResourceIdOutput string = foundryResourceId
