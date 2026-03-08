@@ -1,0 +1,7 @@
+# Add your URLs here, one per line.
+# Lines starting with # are treated as comments.
+
+https://azure.microsoft.com/updates?id=558102
+https://azure.microsoft.com/updates?id=558072
+https://azure.microsoft.com/updates?id=557991
+https://azure.microsoft.com/updates?id=557694
