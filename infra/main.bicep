@@ -148,15 +148,31 @@ module frontendApp 'br/public:avm/res/web/site:0.22.0' = {
   }
 }
 
-// Role assignment: grant the backend's system assigned identity
-// "Cognitive Services OpenAI User" on the Foundry resource
-module roleAssignment 'br/public:avm/ptn/authorization/resource-role-assignment:0.1.2' = {
-  name: 'backendFoundryRole'
+// Parse existing Foundry resource ID for cross-resource-group role assignment
+// Safe default avoids split errors when existingFoundryResourceId is empty (deployFoundry = true)
+var safeExistingId = existingFoundryResourceId != '' ? existingFoundryResourceId : '/subscriptions/na/resourceGroups/na/providers/Microsoft.CognitiveServices/accounts/na'
+var existingFoundrySubId = split(safeExistingId, '/')[2]
+var existingFoundryRgName = split(safeExistingId, '/')[4]
+var existingFoundryAccName = split(safeExistingId, '/')[8]
+
+// Role assignment when deploying a new Foundry (same resource group)
+module roleAssignmentLocal './role-assignment.bicep' = if (deployFoundry) {
+  name: 'backendFoundryRoleLocal'
   params: {
+    foundryAccountName: '${baseName}-foundry'
     principalId: backendApp.outputs.?systemAssignedMIPrincipalId!
     roleDefinitionId: cognitiveServicesOpenAIUserRoleId
-    resourceId: foundryResourceId
-    principalType: 'ServicePrincipal'
+  }
+}
+
+// Role assignment when using an existing Foundry (potentially different resource group)
+module roleAssignmentCrossRg './role-assignment.bicep' = if (!deployFoundry) {
+  name: 'backendFoundryRoleCrossRg'
+  scope: resourceGroup(existingFoundrySubId, existingFoundryRgName)
+  params: {
+    foundryAccountName: existingFoundryAccName
+    principalId: backendApp.outputs.?systemAssignedMIPrincipalId!
+    roleDefinitionId: cognitiveServicesOpenAIUserRoleId
   }
 }
 
