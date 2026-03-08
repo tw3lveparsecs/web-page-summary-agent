@@ -32,7 +32,7 @@ param appServicePlanSku string = 'B1'
 param pythonVersion string = '3.13'
 
 @description('Node.js version for the frontend web app.')
-param nodeVersion string = '20-lts'
+param nodeVersion string = '22-lts'
 
 @description('Microsoft Foundry model deployment name.')
 param foundryDeployment string = 'gpt-4o'
@@ -137,6 +137,7 @@ module frontendApp 'br/public:avm/res/web/site:0.22.0' = {
     serverFarmResourceId: appServicePlan.outputs.resourceId
     siteConfig: {
       linuxFxVersion: 'NODE|${nodeVersion}'
+      appCommandLine: 'node server.mjs'
       alwaysOn: true
     }
     configs: [
