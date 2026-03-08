@@ -7,9 +7,25 @@ the Azure Updates portal before extracting content with BeautifulSoup.
 
 from __future__ import annotations
 
+import time
+
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
 from playwright.sync_api import sync_playwright, Browser, Playwright
+
+# Phrases that indicate the page returned a bot-detection / challenge
+# page rather than the real content.
+_BOT_DETECTION_PHRASES = [
+    "please refresh your browser",
+    "access denied",
+    "enable javascript and cookies to continue",
+    "checking your browser",
+    "just a moment",
+    "verify you are human",
+    "please verify you are a human",
+    "attention required",
+    "pardon our interruption",
+]
 
 
 @dataclass
@@ -54,10 +70,47 @@ class BrowserExtractor:
     #  Public API                                                         #
     # ------------------------------------------------------------------ #
 
-    def extract(self, url: str, wait_seconds: int = 10) -> ExtractedPage:
-        """Navigate to *url*, wait for dynamic content, then extract text."""
+    def extract(self, url: str, wait_seconds: int = 10, max_retries: int = 3) -> ExtractedPage:
+        """Navigate to *url*, wait for dynamic content, then extract text.
+
+        Retries up to *max_retries* times when bot-detection pages are
+        returned instead of the real content.
+        """
         if not self._browser:
             raise RuntimeError("BrowserExtractor must be used as a context manager.")
+
+        last_error: str | None = None
+
+        for attempt in range(1, max_retries + 1):
+            result = self._try_extract(url, wait_seconds)
+
+            if not result.success:
+                return result  # genuine failure — no point retrying
+
+            if not _is_bot_detection(result.title, result.content):
+                return result  # real content — done
+
+            # Bot detection page — retry after a short delay
+            last_error = (
+                f"Bot-detection page received (attempt {attempt}/{max_retries})."
+            )
+            if attempt < max_retries:
+                time.sleep(2 * attempt)  # back off a little between retries
+
+        return ExtractedPage(
+            url=url, title="", content="", success=False,
+            error=(
+                "Page returned a bot-detection challenge after "
+                f"{max_retries} attempts. Try again later."
+            ),
+        )
+
+    # ------------------------------------------------------------------ #
+    #  Internal helpers                                                   #
+    # ------------------------------------------------------------------ #
+
+    def _try_extract(self, url: str, wait_seconds: int) -> ExtractedPage:
+        """Single extraction attempt."""
 
         try:
             context = self._browser.new_context(
@@ -108,6 +161,21 @@ class BrowserExtractor:
                 url=url, title="", content="", success=False,
                 error=f"Browser extraction error: {e}",
             )
+
+
+# ---------------------------------------------------------------------- #
+#  Bot-detection heuristic                                                #
+# ---------------------------------------------------------------------- #
+
+def _is_bot_detection(title: str, content: str) -> bool:
+    """Return True if the title or content looks like a bot-challenge page."""
+    combined = f"{title}\n{content}".lower()
+    if any(phrase in combined for phrase in _BOT_DETECTION_PHRASES):
+        return True
+    # Very short content with no real substance is suspicious
+    if len(content.strip()) < 200 and "refresh" in combined:
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------- #
