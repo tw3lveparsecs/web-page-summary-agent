@@ -58,6 +58,8 @@ function App() {
   const canExecute = foundryEndpoint && foundryDeployment && isAuthValid && systemPrompt && urlCount > 0 && executionStatus !== 'running'
 
   const getApiBaseUrl = () => {
+    const envUrl = import.meta.env.VITE_API_URL
+    if (envUrl) return envUrl.replace(/\/+$/, '')
     const { hostname, protocol } = window.location
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return 'http://localhost:8000'
@@ -71,6 +73,7 @@ function App() {
     setResultOutput('')
 
     const baseUrl = getApiBaseUrl()
+    let output = ''
 
     try {
       const response = await fetch(`${baseUrl}/summarise`, {
@@ -97,26 +100,49 @@ function App() {
         throw new Error(`API returned ${response.status}: ${detail}`)
       }
 
-      const data = await response.json() as {
-        results: Array<{
-          url: string
-          title: string
-          summary: string
-          success: boolean
-          error: string | null
-        }>
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response stream')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        let currentEvent = ''
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7)
+          } else if (line.startsWith('data: ')) {
+            const data = JSON.parse(line.slice(6))
+
+            if (currentEvent === 'status') {
+              output += `> ${data.message}\n`
+              setResultOutput(output)
+            } else if (currentEvent === 'error') {
+              output += `\n**ERROR:** ${data.message}\n`
+              setResultOutput(output)
+            } else if (currentEvent === 'result') {
+              if (!data.success) {
+                output += `\n---\n\n## URL: ${data.url}\n\n**Error:** ${data.error}\n`
+              } else {
+                output += `\n---\n\n## ${data.title}\n\n**URL:** ${data.url}\n\n${data.summary}\n`
+              }
+              setResultOutput(output)
+            } else if (currentEvent === 'done') {
+              output += `\n---\n\n> Done — ${data.succeeded} succeeded, ${data.failed} failed out of ${data.total} URL(s)\n`
+              setResultOutput(output)
+            }
+            currentEvent = ''
+          }
+        }
       }
 
-      const output = data.results
-        .map((r, i) => {
-          if (!r.success) {
-            return `## URL ${i + 1}: ${r.url}\n\n**Error:** ${r.error}`
-          }
-          return `## ${r.title}\n\n**URL:** ${r.url}\n\n${r.summary}`
-        })
-        .join('\n\n---\n\n')
-
-      setResultOutput(output)
       setExecutionStatus('success')
       toast.success('Agent execution completed successfully')
     } catch (error) {
