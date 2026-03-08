@@ -50,26 +50,50 @@ def load_system_prompt(prompt_path: str | Path | None = None) -> str:
     )
 
 
-def get_client() -> AzureOpenAI:
+def get_client(
+    endpoint: str | None = None,
+    auth_method: str | None = None,
+    api_key: str | None = None,
+    tenant_id: str | None = None,
+    client_id: str | None = None,
+    client_secret: str | None = None,
+    api_version: str | None = None,
+) -> AzureOpenAI:
     """
-    Create and return a Microsoft Foundry client from environment variables.
+    Create and return a Microsoft Foundry client.
 
-    Authentication is determined by the ``FOUNDRY_AUTH`` variable:
-      - ``key``   (default) uses ``FOUNDRY_API_KEY``
+    When called with explicit parameters (from the API), those values are
+    used directly.  When any parameter is ``None`` it falls back to the
+    corresponding environment variable so the CLI still works.
+
+    Authentication:
+      - ``key``   uses *api_key* / ``FOUNDRY_API_KEY``
       - ``entra`` uses Entra ID via ``DefaultAzureCredential``
     """
-    endpoint = os.getenv("FOUNDRY_ENDPOINT")
-    api_version = os.getenv("FOUNDRY_API_VERSION", "2024-12-01-preview")
-    auth_method = os.getenv("FOUNDRY_AUTH", "key").lower().strip()
+    endpoint = endpoint or os.getenv("FOUNDRY_ENDPOINT")
+    api_version = api_version or os.getenv("FOUNDRY_API_VERSION", "2024-12-01-preview")
+    auth_method = (auth_method or os.getenv("FOUNDRY_AUTH", "key")).lower().strip()
 
     if not endpoint:
         raise EnvironmentError(
-            "Missing required environment variable: FOUNDRY_ENDPOINT. "
-            "Copy .env.example to .env and fill in your values."
+            "Missing required Foundry endpoint. "
+            "Provide it in the request or set FOUNDRY_ENDPOINT."
         )
 
     if auth_method == "entra":
-        credential = DefaultAzureCredential()
+        kwargs: dict = {}
+        if client_id:
+            kwargs["managed_identity_client_id"] = client_id
+        if tenant_id and client_id and client_secret:
+            # Service principal overrides managed identity
+            from azure.identity import ClientSecretCredential
+            credential = ClientSecretCredential(
+                tenant_id=tenant_id,
+                client_id=client_id,
+                client_secret=client_secret,
+            )
+        else:
+            credential = DefaultAzureCredential(**kwargs)
         token_provider = get_bearer_token_provider(
             credential, "https://cognitiveservices.azure.com/.default"
         )
@@ -80,11 +104,11 @@ def get_client() -> AzureOpenAI:
         )
 
     # Default: API key authentication
-    api_key = os.getenv("FOUNDRY_API_KEY")
+    api_key = api_key or os.getenv("FOUNDRY_API_KEY")
     if not api_key:
         raise EnvironmentError(
-            "Missing required environment variable: FOUNDRY_API_KEY. "
-            "Set FOUNDRY_API_KEY or switch to Entra ID by setting FOUNDRY_AUTH=entra."
+            "Missing Foundry API key. "
+            "Provide it in the request or set FOUNDRY_API_KEY."
         )
 
     return AzureOpenAI(

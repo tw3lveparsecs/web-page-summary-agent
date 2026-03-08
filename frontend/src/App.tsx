@@ -11,7 +11,6 @@ import {
   Download,
   CheckCircle,
   XCircle,
-  Cloud,
   UserCircle
 } from '@phosphor-icons/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +35,8 @@ function App() {
   const [clientId, setClientId] = useKV('client-id', '')
   const [clientSecret, setClientSecret] = useKV('client-secret', '')
   const [apiKey, setApiKey] = useKV('api-key', '')
+  const [foundryEndpoint, setFoundryEndpoint] = useKV('foundry-endpoint', '')
+  const [foundryDeployment, setFoundryDeployment] = useKV('foundry-deployment', '')
   const [systemPrompt, setSystemPrompt] = useKV('system-prompt', 'You are a helpful assistant that summarises web content.')
   const [urlsText, setUrlsText] = useKV('urls-text', '')
   
@@ -53,41 +54,68 @@ function App() {
       : tenantId && clientId && clientSecret
     : apiKey
 
-  const canExecute = isAuthValid && systemPrompt && urlCount > 0 && executionStatus !== 'running'
+  const canExecute = foundryEndpoint && foundryDeployment && isAuthValid && systemPrompt && urlCount > 0 && executionStatus !== 'running'
 
-  const simulateAgentExecution = async () => {
+  const getApiBaseUrl = () => {
+    const { hostname, protocol } = window.location
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8000'
+    }
+    return `${protocol}//${hostname.replace('-web', '-api')}`
+  }
+
+  const runAgent = async () => {
     setExecutionStatus('running')
     setErrorMessage('')
     setResultOutput('')
-    
+
+    const baseUrl = getApiBaseUrl()
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      const authInfo = authMethod === 'entra' 
-        ? `Entra ID (${entraAuthType === 'managed-identity' ? 'Managed Identity' : 'Service Principal'})` 
-        : 'API Key'
-      
-      const mockOutput = `[Web Page Summariser]
-Authentication: ${authInfo}
-URLs to process: ${urlCount}
+      const response = await fetch(`${baseUrl}/summarise`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          urls,
+          foundry_endpoint: foundryEndpoint,
+          foundry_deployment: foundryDeployment,
+          system_prompt: systemPrompt,
+          auth: {
+            method: authMethod === 'entra' ? 'entra' : 'apikey',
+            entra_type: authMethod === 'entra' ? entraAuthType : undefined,
+            api_key: authMethod === 'apikey' ? apiKey : undefined,
+            client_id: authMethod === 'entra' ? clientId : undefined,
+            tenant_id: authMethod === 'entra' && entraAuthType === 'service-principal' ? tenantId : undefined,
+            client_secret: authMethod === 'entra' && entraAuthType === 'service-principal' ? clientSecret : undefined,
+          },
+        }),
+      })
 
-Processing URLs:
-${urls.map((url, i) => `  ${i + 1}. ${url}`).join('\n')}
+      if (!response.ok) {
+        const detail = await response.text()
+        throw new Error(`API returned ${response.status}: ${detail}`)
+      }
 
-Extracting content...
-Generating summaries with Microsoft Foundry...
+      const data = await response.json() as {
+        results: Array<{
+          url: string
+          title: string
+          summary: string
+          success: boolean
+          error: string | null
+        }>
+      }
 
-Results:
-${urls.map((url, i) => `
-URL ${i + 1}: ${url}
-Summary: This is a comprehensive summary of the web page content extracted from ${url}. The page contains valuable information about various topics including technology, development, and best practices. Key insights include detailed analysis of the subject matter with supporting evidence and examples.
----
-`).join('\n')}
+      const output = data.results
+        .map((r, i) => {
+          if (!r.success) {
+            return `## URL ${i + 1}: ${r.url}\n\n**Error:** ${r.error}`
+          }
+          return `## ${r.title}\n\n**URL:** ${r.url}\n\n${r.summary}`
+        })
+        .join('\n\n---\n\n')
 
-Execution completed successfully.
-Total processing time: 2.3 seconds`
-
-      setResultOutput(mockOutput)
+      setResultOutput(output)
       setExecutionStatus('success')
       toast.success('Agent execution completed successfully')
     } catch (error) {
@@ -131,11 +159,40 @@ Total processing time: 2.3 seconds`
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-mono text-lg">
                 <ShieldCheck className="text-accent" weight="bold" />
-                Authentication
+                Microsoft Foundry
               </CardTitle>
-              <CardDescription>Configure your Microsoft Foundry credentials</CardDescription>
+              <CardDescription>Endpoint, model deployment, and authentication</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="foundry-endpoint" className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Endpoint URL
+                  </Label>
+                  <Input
+                    id="foundry-endpoint"
+                    placeholder="https://your-resource.cognitiveservices.azure.com/"
+                    value={foundryEndpoint}
+                    onChange={(e) => setFoundryEndpoint(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="foundry-deployment" className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Deployment Name
+                  </Label>
+                  <Input
+                    id="foundry-deployment"
+                    placeholder="gpt-4o"
+                    value={foundryDeployment}
+                    onChange={(e) => setFoundryDeployment(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
               <Tabs value={authMethod} onValueChange={(v) => setAuthMethod(v as AuthMethod)}>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="entra" className="font-mono text-xs md:text-sm">
@@ -298,7 +355,7 @@ Total processing time: 2.3 seconds`
         <div className="flex justify-center">
           <Button
             size="lg"
-            onClick={simulateAgentExecution}
+            onClick={runAgent}
             disabled={!canExecute}
             className="bg-accent text-accent-foreground hover:bg-accent/90 font-semibold px-8 transition-all duration-200"
           >

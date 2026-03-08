@@ -37,9 +37,6 @@ param nodeVersion string = '22-lts'
 @description('Microsoft Foundry model deployment name.')
 param foundryDeployment string = 'gpt-4o'
 
-@description('Microsoft Foundry API version.')
-param foundryApiVersion string = '2024-12-01-preview'
-
 @description('Allowed origins for CORS (comma separated). Set to the frontend URL after deployment.')
 param allowedOrigins string = '*'
 
@@ -49,15 +46,10 @@ var foundryEndpoint = foundryAccount.?outputs.?endpoint ?? existingFoundryEndpoi
 
 // App settings for the backend and frontend web apps
 var backendAppSettings = {
-  FOUNDRY_AUTH: 'entra'
-  FOUNDRY_ENDPOINT: foundryEndpoint
-  FOUNDRY_DEPLOYMENT: foundryDeployment
-  FOUNDRY_API_VERSION: foundryApiVersion
   ALLOWED_ORIGINS: allowedOrigins
   SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
 }
 var frontendAppSettings = {
-  API_BASE_URL: 'https://${baseName}-api.azurewebsites.net'
   SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
 }
 

@@ -57,8 +57,21 @@ app.add_middleware(
 # --------------------------------------------------------------------------- #
 
 
+class AuthConfig(BaseModel):
+    method: str  # "entra" or "apikey"
+    entra_type: str | None = None  # "managed-identity" or "service-principal"
+    api_key: str | None = None
+    tenant_id: str | None = None
+    client_id: str | None = None
+    client_secret: str | None = None
+
+
 class SummariseRequest(BaseModel):
     urls: list[HttpUrl]
+    foundry_endpoint: str
+    foundry_deployment: str
+    auth: AuthConfig
+    system_prompt: str | None = None
 
 
 class PageSummary(BaseModel):
@@ -88,8 +101,16 @@ async def summarise(request: SummariseRequest):
     if not _browser:
         raise HTTPException(status_code=503, detail="Browser not initialised.")
 
-    system_prompt = load_system_prompt()
-    client = get_client()
+    system_prompt = request.system_prompt or load_system_prompt()
+    auth = request.auth
+    client = get_client(
+        endpoint=request.foundry_endpoint,
+        auth_method=auth.method,
+        api_key=auth.api_key,
+        tenant_id=auth.tenant_id,
+        client_id=auth.client_id,
+        client_secret=auth.client_secret,
+    )
     results: list[PageSummary] = []
 
     for url_obj in request.urls:
@@ -106,6 +127,7 @@ async def summarise(request: SummariseRequest):
         # Summarise
         summary = summarise_content(
             client, page.url, page.title, page.content,
+            deployment=request.foundry_deployment,
             system_prompt=system_prompt,
         )
         results.append(PageSummary(
