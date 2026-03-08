@@ -15,8 +15,6 @@ on:
 
 env:
   AZURE_RG: "web-summariser-rg"    # TODO: set your resource group name
-  FOUNDRY_RG: "foundry-rg"         # Resource group of the existing Foundry account
-  FOUNDRY_ACCOUNT: "lab-foundry-fdry"  # Name of the existing Foundry account
 
 permissions:
   id-token: write
@@ -49,6 +47,6 @@ jobs:
       - name: Allow App Service subnet on Foundry firewall
         run: |
           az cognitiveservices account network-rule add \
-            --name "${{ env.FOUNDRY_ACCOUNT }}" \
-            --resource-group "${{ env.FOUNDRY_RG }}" \
+            --name "${{ steps.deploy.outputs.foundryAccountName }}" \
+            --resource-group "${{ steps.deploy.outputs.foundryResourceGroupName }}" \
             --subnet "${{ steps.deploy.outputs.integrationSubnetId }}"

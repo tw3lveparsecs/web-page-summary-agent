@@ -195,4 +195,6 @@ output frontendUrl string = 'https://${baseName}-web.azurewebsites.net'
 output backendPrincipalId string = backendApp.outputs.?systemAssignedMIPrincipalId!
 output foundryEndpointUrl string = foundryEndpoint
 output foundryResourceIdOutput string = foundryResourceId
+output foundryAccountName string = deployFoundry ? '${baseName}-foundry' : existingFoundryAccName
+output foundryResourceGroupName string = deployFoundry ? resourceGroup().name : existingFoundryRgName
 output integrationSubnetId string = vnet.outputs.subnetResourceIds[0]
