@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 venv/
 output/
+infra/main.json
+*.zip
