@@ -73,6 +73,7 @@ function App() {
     setResultOutput('')
 
     const baseUrl = getApiBaseUrl()
+    console.log('[summariser] API base URL:', baseUrl)
     let output = ''
 
     try {

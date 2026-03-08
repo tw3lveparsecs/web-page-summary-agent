@@ -174,4 +174,12 @@ async def summarise(request: SummariseRequest):
 
         yield _sse("done", {"total": total, "succeeded": succeeded, "failed": failed})
 
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
