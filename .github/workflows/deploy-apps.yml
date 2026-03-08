@@ -108,3 +108,14 @@ jobs:
             --name "${{ env.BASE_NAME }}-api" \
             --resource-group "${{ env.AZURE_RG }}" \
             --settings ALLOWED_ORIGINS="https://${{ env.BASE_NAME }}-web.azurewebsites.net"
+
+      - name: Configure Azure platform CORS
+        run: |
+          az webapp cors remove \
+            --name "${{ env.BASE_NAME }}-api" \
+            --resource-group "${{ env.AZURE_RG }}" \
+            --allowed-origins "*" 2>/dev/null || true
+          az webapp cors add \
+            --name "${{ env.BASE_NAME }}-api" \
+            --resource-group "${{ env.AZURE_RG }}" \
+            --allowed-origins "https://${{ env.BASE_NAME }}-web.azurewebsites.net"
