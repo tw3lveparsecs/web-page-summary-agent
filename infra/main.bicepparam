@@ -9,7 +9,7 @@ param deployFoundry = false
 // param foundryModelCapacity = 10
 
 // Option B: Use an existing Foundry resource (set deployFoundry to false)
-param existingFoundryResourceId = '/subscriptions/2b973351-38a5-4b95-9d56-d0d04a54e54f/resourceGroups/foundry-rg/providers/Microsoft.CognitiveServices/accounts/lab-foundry-fdry'
-param existingFoundryEndpoint = 'https://lab-foundry-fdry.cognitiveservices.azure.com/'
+param existingFoundryResourceId = '/subscriptions/2b973351-38a5-4b95-9d56-d0d04a54e54f/resourceGroups/foundry-rg/providers/Microsoft.CognitiveServices/accounts/lab-shared-foundry-fdry'
+param existingFoundryEndpoint = 'https://lab-shared-foundry-fdry.cognitiveservices.azure.com/'
 
 param foundryDeployment = 'gpt-5-chat'
