@@ -13,6 +13,8 @@ A Python tool that summarises content from any web page, including JavaScript-re
 - **SSE streaming** — The web UI streams real-time status updates and results via Server-Sent Events
 - **Secure by default** — VNet integration with service endpoints secures traffic between the App Service and Foundry
 
+> **Note:** This project has been developed with a balance of cost-effectiveness and security for Azure. The infrastructure uses a B1 App Service Plan, a single VNet with service endpoints, and system-assigned managed identity. For enterprise deployments, modifications will be required — for example, private endpoints, WAF/Application Gateway, dedicated App Service Environments, enhanced logging and monitoring, and stricter network segmentation.
+
 ---
 
 ## Table of Contents
