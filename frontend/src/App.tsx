@@ -199,6 +199,7 @@ function App() {
                   </Label>
                   <Input
                     id="foundry-endpoint"
+                    type="password"
                     placeholder="https://your-resource.cognitiveservices.azure.com/"
                     value={foundryEndpoint}
                     onChange={(e) => setFoundryEndpoint(e.target.value)}
@@ -211,6 +212,7 @@ function App() {
                   </Label>
                   <Input
                     id="foundry-deployment"
+                    type="password"
                     placeholder="gpt-4o"
                     value={foundryDeployment}
                     onChange={(e) => setFoundryDeployment(e.target.value)}
@@ -253,6 +255,7 @@ function App() {
                         </Label>
                         <Input
                           id="client-id-mi"
+                          type="password"
                           placeholder="00000000-0000-0000-0000-000000000000"
                           value={clientId}
                           onChange={(e) => setClientId(e.target.value)}
@@ -268,6 +271,7 @@ function App() {
                         </Label>
                         <Input
                           id="tenant-id"
+                          type="password"
                           placeholder="00000000-0000-0000-0000-000000000000"
                           value={tenantId}
                           onChange={(e) => setTenantId(e.target.value)}
@@ -280,6 +284,7 @@ function App() {
                         </Label>
                         <Input
                           id="client-id"
+                          type="password"
                           placeholder="00000000-0000-0000-0000-000000000000"
                           value={clientId}
                           onChange={(e) => setClientId(e.target.value)}

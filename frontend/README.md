@@ -1,26 +1,19 @@
 # Frontend — GitHub Spark App
 
-Place your GitHub Spark application files in this directory.
+The web UI for the URL Summary Agent built with [GitHub Spark](https://github.com/features/spark), React 19, and Tailwind CSS 4.
 
-The Azure Web App is configured with a **Node 20 LTS** runtime. During deployment the workflow runs `npm install` and `npm run build` (if a build script exists in `package.json`).
+The Azure Web App is configured with a **Node 22 LTS** runtime. During deployment the workflow runs `npm install` and `npm run build`, passing `VITE_API_URL` so the frontend knows where the backend API lives.
 
-## Expected structure
+## Local development
 
-```
-frontend/
-├── package.json
-├── index.html       (or public/index.html)
-├── src/
-│   └── ...          your Spark app source files
-└── ...
+```bash
+cd frontend
+npm install
+VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
 ## Environment variables
 
-The frontend Web App has the following app setting injected by the Bicep infrastructure:
-
-| Variable | Value |
-|---|---|
-| `API_BASE_URL` | `https://<baseName>-api.azurewebsites.net` |
-
-Use this to point API calls at the backend.
+| Variable | Set at | Purpose |
+|---|---|---|
+| `VITE_API_URL` | Build time | Backend API base URL (e.g. `https://websummariser-api.azurewebsites.net`) |

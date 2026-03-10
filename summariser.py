@@ -73,6 +73,9 @@ def get_client(
     endpoint = endpoint or os.getenv("FOUNDRY_ENDPOINT")
     api_version = api_version or os.getenv("FOUNDRY_API_VERSION", "2024-12-01-preview")
     auth_method = (auth_method or os.getenv("FOUNDRY_AUTH", "key")).lower().strip()
+    tenant_id = tenant_id or os.getenv("AZURE_TENANT_ID")
+    client_id = client_id or os.getenv("AZURE_CLIENT_ID")
+    client_secret = client_secret or os.getenv("AZURE_CLIENT_SECRET")
 
     if not endpoint:
         raise EnvironmentError(

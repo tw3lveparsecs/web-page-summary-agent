@@ -40,8 +40,7 @@ jobs:
             summariser.py \
             main.py \
             prompt.txt \
-            requirements.txt \
-            startup.sh
+            requirements.txt
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
