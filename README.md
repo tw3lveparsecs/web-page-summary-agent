@@ -2,6 +2,10 @@
 
 A Python tool that summarises content from any web page, including JavaScript-rendered SPAs and dynamically loaded content. It generates structured summaries using Microsoft Foundry. Run it locally as a CLI tool or deploy to Azure with a web UI.
 
+## Demo
+
+https://github.com/user-attachments/assets/REPLACE_WITH_UPLOADED_VIDEO_URL.mp4
+
 ## Features
 
 - **Dynamic content support** — Uses a headless Chromium browser (Playwright) to render JavaScript-heavy pages before extracting content
