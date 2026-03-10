@@ -4,7 +4,7 @@ A Python tool that summarises content from any web page, including JavaScript-re
 
 ## Demo
 
-https://github.com/user-attachments/assets/REPLACE_WITH_UPLOADED_VIDEO_URL.mp4
+https://github.com/user-attachments/assets/d925943f-dd63-4d73-b47c-fd76edcfb525
 
 ## Features
 
