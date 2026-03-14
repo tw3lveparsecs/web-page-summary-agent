@@ -100,7 +100,7 @@ async def health():
 
 
 @app.post("/summarise")
-async def summarise(request: SummariseRequest):
+async def summarise(request: SummariseRequest, raw_request: Request):
     if not _browser:
         raise HTTPException(status_code=503, detail="Browser not initialised.")
 
@@ -135,6 +135,12 @@ async def summarise(request: SummariseRequest):
         failed = 0
 
         for i, url_obj in enumerate(request.urls, 1):
+            # Check if the client has disconnected (cancel pressed)
+            if await raw_request.is_disconnected():
+                yield _sse("status", {"message": "Cancelled by user"})
+                yield _sse("done", {"total": total, "succeeded": succeeded, "failed": failed})
+                return
+
             url = str(url_obj)
 
             # --- Extract ---

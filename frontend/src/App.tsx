@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { 
   Key, 
   ShieldCheck, 
   Play, 
+  Stop,
   FileCode, 
   Globe, 
   Terminal, 
@@ -45,6 +46,7 @@ function App() {
   const [resultOutput, setResultOutput] = useState('')
   const [resultViewMode, setResultViewMode] = useState<ResultViewMode>('console')
   const [errorMessage, setErrorMessage] = useState('')
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const urls = (urlsText || '').split('\n').filter(url => url.trim() !== '')
   const urlCount = urls.length
@@ -67,10 +69,20 @@ function App() {
     return `${protocol}//${hostname.replace('-web', '-api')}`
   }
 
+  const cancelAgent = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+  }
+
   const runAgent = async () => {
     setExecutionStatus('running')
     setErrorMessage('')
     setResultOutput('')
+
+    const controller = new AbortController()
+    abortControllerRef.current = controller
 
     const baseUrl = getApiBaseUrl()
     console.log('[summariser] API base URL:', baseUrl)
@@ -80,6 +92,7 @@ function App() {
       const response = await fetch(`${baseUrl}/summarise`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           urls,
           foundry_endpoint: foundryEndpoint,
@@ -147,9 +160,18 @@ function App() {
       setExecutionStatus('success')
       toast.success('Agent execution completed successfully')
     } catch (error) {
-      setExecutionStatus('error')
-      setErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred')
-      toast.error('Agent execution failed')
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        output += '\n> **Cancelled by user**\n'
+        setResultOutput(output)
+        setExecutionStatus('idle')
+        toast('Agent execution cancelled')
+      } else {
+        setExecutionStatus('error')
+        setErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred')
+        toast.error('Agent execution failed')
+      }
+    } finally {
+      abortControllerRef.current = null
     }
   }
 
@@ -385,7 +407,7 @@ function App() {
           </Card>
         </div>
 
-        <div className="flex justify-center">
+        <div className="flex justify-center gap-3">
           <Button
             size="lg"
             onClick={runAgent}
@@ -404,6 +426,17 @@ function App() {
               </>
             )}
           </Button>
+          {executionStatus === 'running' && (
+            <Button
+              size="lg"
+              variant="destructive"
+              onClick={cancelAgent}
+              className="font-semibold px-8 transition-all duration-200"
+            >
+              <Stop className="mr-2 h-5 w-5" weight="fill" />
+              Cancel
+            </Button>
+          )}
         </div>
 
         {errorMessage && (
