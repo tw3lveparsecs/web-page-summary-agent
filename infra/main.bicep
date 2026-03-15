@@ -48,6 +48,7 @@ var foundryEndpoint = foundryAccount.?outputs.?endpoint ?? existingFoundryEndpoi
 var backendAppSettings = {
   ALLOWED_ORIGINS: allowedOrigins
   SCM_DO_BUILD_DURING_DEPLOYMENT: 'true'
+  ORYX_DISABLE_COMPRESSDESTINATIONDIR: 'true'
   WEBSITES_CONTAINER_START_TIME_LIMIT: '600'
 }
 var frontendAppSettings = {
