@@ -143,10 +143,9 @@ class BrowserExtractor:
                 # Timeout is acceptable — page may already be loaded
                 pass
 
-            # Give any remaining XHR/fetch calls a moment to complete
-            page.wait_for_timeout(2000)
+            # Wait for page content to stabilise (SPA hydration)
+            html = self._wait_for_stable_content(page)
 
-            html = page.content()
             context.close()
 
             title, content = _extract_content(html)
@@ -163,6 +162,29 @@ class BrowserExtractor:
                 url=url, title="", content="", success=False,
                 error=f"Browser extraction error: {e}",
             )
+
+
+    def _wait_for_stable_content(
+        self, page, poll_ms: int = 500, stable_checks: int = 2, max_polls: int = 16,
+    ) -> str:
+        """Poll the page until its text content stops changing.
+
+        Returns the final rendered HTML.  This handles SPAs that load a
+        shell first and fetch specific content via XHR afterwards.
+        """
+        previous = ""
+        stable_count = 0
+        for _ in range(max_polls):
+            page.wait_for_timeout(poll_ms)
+            current = page.evaluate("document.body.innerText")
+            if current == previous:
+                stable_count += 1
+                if stable_count >= stable_checks:
+                    break
+            else:
+                stable_count = 0
+            previous = current
+        return page.content()
 
 
 class AsyncBrowserExtractor:
@@ -232,8 +254,7 @@ class AsyncBrowserExtractor:
             except Exception:
                 pass
 
-            await page.wait_for_timeout(2000)
-            html = await page.content()
+            html = await self._wait_for_stable_content(page)
             await context.close()
 
             title, content = _extract_content(html)
@@ -250,6 +271,24 @@ class AsyncBrowserExtractor:
                 url=url, title="", content="", success=False,
                 error=f"Browser extraction error: {e}",
             )
+
+    async def _wait_for_stable_content(
+        self, page, poll_ms: int = 500, stable_checks: int = 2, max_polls: int = 16,
+    ) -> str:
+        """Async version — poll until the page text stops changing."""
+        previous = ""
+        stable_count = 0
+        for _ in range(max_polls):
+            await page.wait_for_timeout(poll_ms)
+            current = await page.evaluate("document.body.innerText")
+            if current == previous:
+                stable_count += 1
+                if stable_count >= stable_checks:
+                    break
+            else:
+                stable_count = 0
+            previous = current
+        return await page.content()
 
 
 # ---------------------------------------------------------------------- #
