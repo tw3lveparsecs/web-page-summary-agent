@@ -127,7 +127,7 @@ module backendApp 'br/public:avm/res/web/site:0.22.0' = {
     }
     siteConfig: {
       linuxFxVersion: 'PYTHON|${pythonVersion}'
-      appCommandLine: 'python -m playwright install --with-deps chromium && gunicorn api:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 300'
+      appCommandLine: 'bash startup.sh'
       alwaysOn: true
     }
     configs: [
