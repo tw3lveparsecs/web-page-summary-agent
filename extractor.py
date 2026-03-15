@@ -130,8 +130,10 @@ class BrowserExtractor:
             )
             page = context.new_page()
 
-            # Navigate and wait for network to fully settle
-            page.goto(url, wait_until="networkidle", timeout=30_000)
+            # Navigate — use domcontentloaded rather than networkidle
+            # because sites with persistent connections (analytics,
+            # websockets) can prevent networkidle from ever firing.
+            page.goto(url, wait_until="domcontentloaded", timeout=30_000)
 
             # Wait for dynamic content to appear after JS hydration.
             try:
@@ -141,13 +143,6 @@ class BrowserExtractor:
                 )
             except Exception:
                 # Timeout is acceptable — page may already be loaded
-                pass
-
-            # Re-wait for networkidle to catch secondary XHRs triggered
-            # by client-side routing (e.g. SPA reading query params).
-            try:
-                page.wait_for_load_state("networkidle", timeout=10_000)
-            except Exception:
                 pass
 
             # Wait for page content to stabilise (SPA hydration)
@@ -256,20 +251,13 @@ class AsyncBrowserExtractor:
                 'Object.defineProperty(navigator, "webdriver", {get: () => undefined})'
             )
             page = await context.new_page()
-            await page.goto(url, wait_until="networkidle", timeout=30_000)
+            await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
 
             try:
                 await page.wait_for_selector(
                     "h2, h3, article, main p, [role='main']",
                     timeout=wait_seconds * 1000,
                 )
-            except Exception:
-                pass
-
-            # Re-wait for networkidle to catch secondary XHRs triggered
-            # by client-side routing (e.g. SPA reading query params).
-            try:
-                await page.wait_for_load_state("networkidle", timeout=10_000)
             except Exception:
                 pass
 
