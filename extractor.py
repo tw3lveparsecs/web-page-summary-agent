@@ -143,6 +143,13 @@ class BrowserExtractor:
                 # Timeout is acceptable — page may already be loaded
                 pass
 
+            # Re-wait for networkidle to catch secondary XHRs triggered
+            # by client-side routing (e.g. SPA reading query params).
+            try:
+                page.wait_for_load_state("networkidle", timeout=10_000)
+            except Exception:
+                pass
+
             # Wait for page content to stabilise (SPA hydration)
             html = self._wait_for_stable_content(page)
 
@@ -165,21 +172,26 @@ class BrowserExtractor:
 
 
     def _wait_for_stable_content(
-        self, page, poll_ms: int = 500, stable_checks: int = 2, max_polls: int = 16,
+        self, page, poll_ms: int = 500, stable_checks: int = 2,
+        max_polls: int = 20, min_polls: int = 6,
     ) -> str:
         """Poll the page until its text content stops changing.
 
         Returns the final rendered HTML.  This handles SPAs that load a
         shell first and fetch specific content via XHR afterwards.
+
+        *min_polls* ensures we wait at least ``min_polls * poll_ms`` ms
+        before accepting stability, giving SPAs time to trigger their
+        secondary content fetches.
         """
         previous = ""
         stable_count = 0
-        for _ in range(max_polls):
+        for i in range(max_polls):
             page.wait_for_timeout(poll_ms)
             current = page.evaluate("document.body.innerText")
             if current == previous:
                 stable_count += 1
-                if stable_count >= stable_checks:
+                if stable_count >= stable_checks and i >= min_polls - 1:
                     break
             else:
                 stable_count = 0
@@ -254,6 +266,13 @@ class AsyncBrowserExtractor:
             except Exception:
                 pass
 
+            # Re-wait for networkidle to catch secondary XHRs triggered
+            # by client-side routing (e.g. SPA reading query params).
+            try:
+                await page.wait_for_load_state("networkidle", timeout=10_000)
+            except Exception:
+                pass
+
             html = await self._wait_for_stable_content(page)
             await context.close()
 
@@ -273,17 +292,22 @@ class AsyncBrowserExtractor:
             )
 
     async def _wait_for_stable_content(
-        self, page, poll_ms: int = 500, stable_checks: int = 2, max_polls: int = 16,
+        self, page, poll_ms: int = 500, stable_checks: int = 2,
+        max_polls: int = 20, min_polls: int = 6,
     ) -> str:
-        """Async version — poll until the page text stops changing."""
+        """Async version — poll until the page text stops changing.
+
+        *min_polls* ensures we wait at least ``min_polls * poll_ms`` ms
+        before accepting stability.
+        """
         previous = ""
         stable_count = 0
-        for _ in range(max_polls):
+        for i in range(max_polls):
             await page.wait_for_timeout(poll_ms)
             current = await page.evaluate("document.body.innerText")
             if current == previous:
                 stable_count += 1
-                if stable_count >= stable_checks:
+                if stable_count >= stable_checks and i >= min_polls - 1:
                     break
             else:
                 stable_count = 0
