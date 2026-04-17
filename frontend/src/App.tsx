@@ -10,6 +10,7 @@ import {
   Terminal, 
   FileText, 
   Download,
+  Copy,
   CheckCircle,
   XCircle,
   Cloud,
@@ -45,6 +46,7 @@ function App() {
   const [executionStatus, setExecutionStatus] = useState<ExecutionStatus>('idle')
   const [resultOutput, setResultOutput] = useState('')
   const [resultViewMode, setResultViewMode] = useState<ResultViewMode>('console')
+  const [summaries, setSummaries] = useState<{ title: string; summary: string; url: string }[]>([])
   const [errorMessage, setErrorMessage] = useState('')
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -80,6 +82,7 @@ function App() {
     setExecutionStatus('running')
     setErrorMessage('')
     setResultOutput('')
+    setSummaries([])
 
     const controller = new AbortController()
     abortControllerRef.current = controller
@@ -146,6 +149,7 @@ function App() {
                 output += `\n---\n\n## URL: ${data.url}\n\n**Error:** ${data.error}\n`
               } else {
                 output += `\n---\n\n## ${data.title}\n\n**URL:** ${data.url}\n\n${data.summary}\n`
+                setSummaries(prev => [...prev, { title: data.title, summary: data.summary, url: data.url }])
               }
               setResultOutput(output)
             } else if (currentEvent === 'done') {
@@ -186,6 +190,17 @@ function App() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
     toast.success('Results downloaded')
+  }
+
+  const combinedSummaryText = summaries.map(s => s.summary).join('\n')
+
+  const copySummaries = async () => {
+    try {
+      await navigator.clipboard.writeText(combinedSummaryText)
+      toast.success('Summaries copied to clipboard')
+    } catch {
+      toast.error('Failed to copy to clipboard')
+    }
   }
 
   return (
@@ -467,9 +482,19 @@ function App() {
                         <FileText className="mr-2 h-4 w-4" weight="bold" />
                         Markdown
                       </TabsTrigger>
+                      <TabsTrigger value="summary" className="font-mono text-xs">
+                        <Copy className="mr-2 h-4 w-4" weight="bold" />
+                        Combined
+                      </TabsTrigger>
                     </TabsList>
                   </Tabs>
                   <Separator orientation="vertical" className="h-8" />
+                  {resultViewMode === 'summary' && summaries.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={copySummaries}>
+                      <Copy className="mr-2 h-4 w-4" weight="bold" />
+                      Copy
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={downloadResult}>
                     <Download className="mr-2 h-4 w-4" weight="bold" />
                     Download
@@ -479,9 +504,17 @@ function App() {
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[400px] w-full rounded-md border border-border p-4">
-                <pre className="font-mono text-xs md:text-sm text-foreground whitespace-pre-wrap">
-                  {resultOutput}
-                </pre>
+                {resultViewMode === 'summary' ? (
+                  summaries.length > 0 ? (
+                    <pre className="font-mono text-xs md:text-sm text-foreground whitespace-pre-wrap">{combinedSummaryText}</pre>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No summaries yet. Summaries will appear here as they are processed.</p>
+                  )
+                ) : (
+                  <pre className="font-mono text-xs md:text-sm text-foreground whitespace-pre-wrap">
+                    {resultOutput}
+                  </pre>
+                )}
               </ScrollArea>
             </CardContent>
           </Card>

@@ -29,4 +29,4 @@ export interface AgentResult {
 
 export type ExecutionStatus = 'idle' | 'running' | 'success' | 'error'
 
-export type ResultViewMode = 'console' | 'markdown'
+export type ResultViewMode = 'console' | 'markdown' | 'summary'
