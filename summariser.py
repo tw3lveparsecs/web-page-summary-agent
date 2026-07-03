@@ -148,7 +148,6 @@ def summarise_content(
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": user_message},
             ],
-            temperature=0.3,
             max_completion_tokens=1024,
         )
         summary_text = response.choices[0].message.content.strip()
