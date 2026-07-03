@@ -149,7 +149,7 @@ def summarise_content(
                 {"role": "user", "content": user_message},
             ],
             temperature=0.3,
-            max_tokens=1024,
+            max_completion_tokens=1024,
         )
         summary_text = response.choices[0].message.content.strip()
         return Summary(url=url, title=title, summary=summary_text, success=True)
