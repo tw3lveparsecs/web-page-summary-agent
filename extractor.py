@@ -13,8 +13,8 @@ import time
 from bs4 import BeautifulSoup
 from dataclasses import dataclass
 from playwright.sync_api import sync_playwright, Browser, Playwright
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.async_api import async_playwright, Browser as AsyncBrowser, Playwright as AsyncPlaywright
-
 # Phrases that indicate the page returned a bot-detection / challenge
 # page rather than the real content.
 _BOT_DETECTION_PHRASES = [
@@ -133,7 +133,12 @@ class BrowserExtractor:
             # Navigate — use domcontentloaded rather than networkidle
             # because sites with persistent connections (analytics,
             # websockets) can prevent networkidle from ever firing.
-            page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+            except PlaywrightTimeoutError:
+                # Slow page — fall back to a lighter wait condition so we
+                # still capture whatever has loaded rather than failing.
+                page.goto(url, wait_until="commit", timeout=60_000)
 
             # Wait for dynamic content to appear after JS hydration.
             try:
